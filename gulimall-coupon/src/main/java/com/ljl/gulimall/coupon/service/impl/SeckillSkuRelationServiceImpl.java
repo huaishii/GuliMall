@@ -1,5 +1,9 @@
 package com.ljl.gulimall.coupon.service.impl;
 
+import com.ljl.common.to.SkuReductionTo;
+import com.ljl.gulimall.coupon.entity.SkuLadderEntity;
+import com.ljl.gulimall.coupon.service.SkuLadderService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Map;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
