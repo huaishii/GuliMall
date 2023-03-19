@@ -2,6 +2,7 @@ package com.ljl.gulimall.product.service.impl;
 
 import com.ljl.common.to.SkuReductionTo;
 import com.ljl.common.to.SpuBoundTo;
+import com.ljl.common.to.es.SkuEsModel;
 import com.ljl.common.utils.R;
 import com.ljl.gulimall.product.entity.*;
 import com.ljl.gulimall.product.feign.CouponFeignService;
@@ -9,9 +10,11 @@ import com.ljl.gulimall.product.service.*;
 import com.ljl.gulimall.product.vo.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,10 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuInfoDao, SpuInfoEntity> i
     private SkuSaleAttrValueService skuSaleAttrValueService;
     @Autowired
     private CouponFeignService couponFeignService;
+    @Autowired
+    private BrandService brandService;
+    @Autowired
+    private CategoryService categoryService;
 
     @Override
     public PageUtils queryPage(Map<String, Object> params) {
@@ -115,7 +122,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuInfoDao, SpuInfoEntity> i
         List<Skus> skus = vo.getSkus();
         if (!CollectionUtils.isEmpty(skus)) {
             skus.forEach(item -> {
-                StringBuffer buffer = new StringBuffer();
+                StringBuilder buffer = new StringBuilder();
                 for (Images image : item.getImages()) {
                     if (image.getDefaultImg() == 1) {
                         buffer.append(image.getImgUrl());
@@ -200,6 +207,39 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuInfoDao, SpuInfoEntity> i
         );
 
         return new PageUtils(page);
+    }
+
+    @Override
+    public void spuUp(Long spUid) {
+
+        //查出当前spuid对应的所有sku信息、品牌名族
+        List<SkuInfoEntity> skus = skuInfoService.getSkusByspuId(spUid);
+        //封装每个sku信息
+        skus.stream().map(sku -> {
+            //组装要存储在es中的数据
+            SkuEsModel esModel = new SkuEsModel();
+            BeanUtils.copyProperties(sku, esModel);
+            esModel.setSkuPrice(sku.getPrice());
+            esModel.setSkuImg(sku.getSkuDefaultImg());
+            //远程调用库存系统，查询是否有库存
+
+            //热度评分
+
+            //查询品牌 分类名字信息
+            BrandEntity brand = brandService.getById(esModel.getBrandId());
+            esModel.setBrandName(brand.getName());
+            esModel.setBrandImg(brand.getLogo());
+
+            CategoryEntity category = categoryService.getById(esModel.getCatalogId());
+            esModel.setCatalogName(category.getName());
+
+            //查询当前sku所有可被检索规格属性
+
+            return esModel;
+        }).collect(Collectors.toList());
+
+        //将数据发送给检索服务保存
+
     }
 
 
